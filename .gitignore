@@ -1,0 +1,12 @@
+# Go
+bin/
+dist/
+*.test
+coverage.out
+
+# Settings and runtime artifacts
+.media-transcriber/
+*.log
+
+# Frontend
+frontend/node_modules/

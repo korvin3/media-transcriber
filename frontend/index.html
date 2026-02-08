@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Media Transcriber</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3efe8;
+        --panel: #fffdf8;
+        --ink: #1f1a17;
+        --muted: #6f6257;
+        --line: #ded2c3;
+        --accent: #005f73;
+        --accent-soft: #caecf2;
+        --ok: #205f3d;
+        --ok-bg: #dff2e7;
+        --warn: #7e1f16;
+        --warn-bg: #fae0de;
+        --shadow: 0 10px 30px rgba(74, 59, 43, 0.09);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Trebuchet MS", "Lucida Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 90% -20%, #e8f6fa, transparent 42%),
+          radial-gradient(circle at -20% 15%, #f8e2c5, transparent 50%),
+          var(--bg);
+      }
+
+      main {
+        max-width: 1060px;
+        margin: 0 auto;
+        padding: 28px 18px 36px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        letter-spacing: 0.01em;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .layout {
+        margin-top: 18px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 15px;
+        box-shadow: var(--shadow);
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 1rem;
+      }
+
+      .field {
+        display: grid;
+        gap: 5px;
+        margin-bottom: 11px;
+      }
+
+      .field label {
+        font-size: 0.86rem;
+        color: var(--muted);
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+      }
+
+      input,
+      select,
+      button,
+      textarea {
+        font: inherit;
+      }
+
+      input,
+      select {
+        width: 100%;
+        border: 1px solid #cfbea9;
+        background: #fff;
+        border-radius: 10px;
+        padding: 9px 10px;
+        min-height: 40px;
+      }
+
+      button {
+        border: none;
+        border-radius: 10px;
+        min-height: 38px;
+        padding: 0 14px;
+        background: #e8ded3;
+        color: #2d2520;
+        cursor: pointer;
+        transition: transform 140ms ease, background 140ms ease;
+      }
+
+      button:hover:enabled {
+        transform: translateY(-1px);
+        background: #dfd0c2;
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .primary:hover:enabled {
+        background: #0a6f85;
+      }
+
+      .danger {
+        background: #a03224;
+        color: #fff;
+      }
+
+      .danger:hover:enabled {
+        background: #b53b2c;
+      }
+
+      .statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .pill-idle,
+      .pill-preprocessing,
+      .pill-transcribing,
+      .pill-exporting {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .pill-done {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+
+      .pill-failed,
+      .pill-cancelled {
+        background: var(--warn-bg);
+        color: var(--warn);
+      }
+
+      .dropzone {
+        border: 2px dashed #9eb9bf;
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        color: #35525d;
+        background: #f3fafb;
+      }
+
+      .dropzone-active {
+        border-color: #2f8b9b;
+        background: #dff3f6;
+      }
+
+      .dropzone-disabled {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      .card-locked {
+        opacity: 0.82;
+      }
+
+      .hint {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .mono {
+        margin-top: 7px;
+        font-family: "Consolas", "Lucida Console", monospace;
+        font-size: 0.84rem;
+        background: #faf4ee;
+        border: 1px solid #eadfce;
+        border-radius: 8px;
+        padding: 7px;
+        overflow-wrap: anywhere;
+      }
+
+      .events {
+        margin: 0;
+        padding: 0;
+        max-height: 360px;
+        overflow: auto;
+        list-style: none;
+      }
+
+      .event {
+        border-top: 1px solid #e7dbcd;
+        padding: 9px 2px;
+        font-size: 0.84rem;
+      }
+
+      .event-type {
+        display: inline-block;
+        min-width: 62px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #7b6656;
+      }
+
+      .event time {
+        color: #8c7767;
+        font-size: 0.76rem;
+        margin-left: 6px;
+      }
+
+      .diagnostics-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.83rem;
+      }
+
+      .diagnostics-table th,
+      .diagnostics-table td {
+        text-align: left;
+        vertical-align: top;
+        border-top: 1px solid #e7dbcd;
+        padding: 8px 6px;
+      }
+
+      .badge {
+        border-radius: 999px;
+        padding: 1px 7px;
+        font-weight: 700;
+        font-size: 0.72rem;
+      }
+
+      .badge-pass {
+        background: var(--ok-bg);
+        color: var(--ok);
+      }
+
+      .badge-fail {
+        background: var(--warn-bg);
+        color: var(--warn);
+      }
+
+      .diag-action-btn {
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 0.78rem;
+      }
+
+      .model-download-btn {
+        min-width: 140px;
+      }
+
+      .message {
+        margin-top: 10px;
+        border-radius: 9px;
+        padding: 9px 10px;
+        font-size: 0.84rem;
+        display: none;
+      }
+
+      .message-info {
+        background: #e5eef0;
+        color: #244650;
+      }
+
+      .message-error {
+        background: var(--warn-bg);
+        color: var(--warn);
+      }
+
+      @media (max-width: 930px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Media Transcriber</h1>
+      <p class="subtitle">Offline transcription workflow with startup diagnostics and live pipeline logs.</p>
+
+      <div class="layout">
+        <section class="stack">
+          <article class="card" id="workflow-card">
+            <h2>Workflow</h2>
+            <p class="hint" id="workflow-lock-hint" style="display: none">
+              Workflow is locked until all startup diagnostics pass.
+            </p>
+            <div class="statusbar">
+              <div>
+                <span class="pill pill-idle" id="job-pill">IDLE</span>
+                <span class="hint" id="job-message">No active job.</span>
+              </div>
+              <div class="row">
+                <button id="start-btn" class="primary">Start</button>
+                <button id="cancel-btn" class="danger" disabled>Cancel</button>
+              </div>
+            </div>
+
+            <div class="field" style="margin-top: 12px">
+              <label for="input-path">Input media file</label>
+              <div class="row">
+                <input id="input-path" type="text" placeholder="Choose or drop a media file" />
+                <button id="pick-input-btn" type="button">Browse</button>
+              </div>
+              <div id="dropzone" class="dropzone">
+                Drag and drop a media file here
+                <p class="hint">Supports mp4, mov, mkv, mp3, wav and similar formats.</p>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="result-path">Latest transcript</label>
+              <div id="result-path" class="mono">No transcript generated yet.</div>
+            </div>
+            <div class="row">
+              <button id="open-output-btn" type="button" disabled>Open Output Folder</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2>Live Events</h2>
+            <ul id="events-list" class="events"></ul>
+          </article>
+        </section>
+
+        <section class="stack">
+          <article class="card">
+            <h2>Settings</h2>
+            <div class="field">
+              <label for="model-path">Model path (.bin/.gguf file or folder)</label>
+              <div class="row">
+                <input id="model-path" type="text" placeholder="/path/to/model or model folder" />
+              </div>
+              <div class="row">
+                <button id="pick-model-file-btn" type="button">Model File</button>
+                <button id="pick-model-dir-btn" type="button">Model Folder</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="model-catalog">Whisper model catalog</label>
+              <div class="row">
+                <select id="model-catalog"></select>
+                <button id="download-model-btn" class="model-download-btn" type="button" disabled>Download Model</button>
+              </div>
+              <p class="hint" id="model-catalog-hint">Select a model and download it automatically.</p>
+            </div>
+
+            <div class="field">
+              <label for="output-dir">Output directory</label>
+              <div class="row">
+                <input id="output-dir" type="text" placeholder="/path/to/transcripts" />
+                <button id="pick-output-btn" type="button">Browse</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="language">Language</label>
+              <select id="language">
+                <option value="auto">auto (detect)</option>
+                <option value="en">en</option>
+                <option value="ru">ru</option>
+                <option value="de">de</option>
+                <option value="fr">fr</option>
+                <option value="es">es</option>
+                <option value="ja">ja</option>
+                <option value="zh">zh</option>
+              </select>
+            </div>
+
+            <div class="row">
+              <button id="save-settings-btn" type="button">Save Settings</button>
+              <button id="refresh-diagnostics-btn" type="button">Refresh Diagnostics</button>
+            </div>
+            <div id="app-message" class="message"></div>
+          </article>
+
+          <article class="card">
+            <h2>Startup Diagnostics</h2>
+            <p class="hint" id="diag-summary">Loading diagnostics...</p>
+            <table class="diagnostics-table" aria-label="Diagnostics report">
+              <thead>
+                <tr>
+                  <th>Check</th>
+                  <th>Status</th>
+                  <th>Details</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="diagnostics-body"></tbody>
+            </table>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const state = {
+        binding: null,
+        lastSeq: 0,
+        jobStatus: "idle",
+        latestTranscriptPath: "",
+        fallbackPollHandle: null,
+        lastDiagnostics: null,
+        fixingDiagnostics: new Set(),
+        modelCatalog: [],
+        downloadingModel: false,
+        workflowLocked: true
+      };
+
+      const fallbackReport = {
+        generatedAt: new Date().toISOString(),
+        hasFailures: true,
+        items: [
+          {
+            id: "startup_state",
+            name: "Backend connection",
+            status: "fail",
+            message: "Diagnostics API is not connected yet.",
+            hint: "Bind App methods in Wails runtime setup to load live startup checks."
+          }
+        ]
+      };
+
+      const mediaExtensions = [".mp4", ".mov", ".mkv", ".avi", ".mp3", ".wav", ".m4a", ".flac", ".aac", ".ogg", ".webm"];
+
+      function getAppBinding() {
+        const appBindings = [window.go?.main?.App, window.go?.bootstrap?.App, window.backend?.App];
+        return appBindings.find((binding) => !!binding) || null;
+      }
+
+      function setMessage(text, type = "info") {
+        const box = document.getElementById("app-message");
+        if (!text) {
+          box.style.display = "none";
+          box.textContent = "";
+          box.className = "message";
+          return;
+        }
+        box.textContent = text;
+        box.className = `message message-${type}`;
+        box.style.display = "block";
+      }
+
+      function toErrorMessage(err) {
+        if (!err) {
+          return "Unknown error";
+        }
+        if (typeof err === "string") {
+          return err;
+        }
+        if (typeof err.message === "string") {
+          return err.message;
+        }
+        return JSON.stringify(err);
+      }
+
+      function normalizePath(path) {
+        return String(path || "").trim();
+      }
+
+      function modelOptionLabel(model) {
+        const name = String(model?.name || model?.id || "Unnamed model");
+        const size = normalizePath(model?.sizeLabel);
+        const downloaded = Boolean(model?.downloaded);
+        if (!size) {
+          return downloaded ? `${name} • downloaded` : name;
+        }
+        return downloaded ? `${name} (${size}) • downloaded` : `${name} (${size})`;
+      }
+
+      function isLikelyMediaPath(path) {
+        const lower = normalizePath(path).toLowerCase();
+        return mediaExtensions.some((ext) => lower.endsWith(ext));
+      }
+
+      function setJobStatus(status, message) {
+        state.jobStatus = status || "idle";
+        const pill = document.getElementById("job-pill");
+        pill.textContent = state.jobStatus.toUpperCase();
+        pill.className = `pill pill-${state.jobStatus}`;
+
+        const messageNode = document.getElementById("job-message");
+        messageNode.textContent = message || "";
+        syncWorkflowControls();
+      }
+
+      function setLatestTranscript(path) {
+        state.latestTranscriptPath = normalizePath(path);
+        const resultNode = document.getElementById("result-path");
+        if (!state.latestTranscriptPath) {
+          resultNode.textContent = "No transcript generated yet.";
+          syncWorkflowControls();
+          return;
+        }
+
+        resultNode.textContent = state.latestTranscriptPath;
+        syncWorkflowControls();
+      }
+
+      function syncWorkflowControls() {
+        const isRunning = ["preprocessing", "transcribing", "exporting"].includes(state.jobStatus);
+        const lock = Boolean(state.workflowLocked);
+
+        const startBtn = document.getElementById("start-btn");
+        const cancelBtn = document.getElementById("cancel-btn");
+        const inputPath = document.getElementById("input-path");
+        const pickInputBtn = document.getElementById("pick-input-btn");
+        const openOutputBtn = document.getElementById("open-output-btn");
+        const dropzone = document.getElementById("dropzone");
+        const workflowCard = document.getElementById("workflow-card");
+        const lockHint = document.getElementById("workflow-lock-hint");
+
+        if (!startBtn || !cancelBtn || !inputPath || !pickInputBtn || !openOutputBtn || !dropzone || !workflowCard || !lockHint) {
+          return;
+        }
+
+        startBtn.disabled = lock || isRunning;
+        cancelBtn.disabled = !isRunning;
+        inputPath.disabled = lock || isRunning;
+        pickInputBtn.disabled = lock || isRunning;
+        openOutputBtn.disabled = lock || !state.latestTranscriptPath;
+
+        dropzone.classList.toggle("dropzone-disabled", lock || isRunning);
+        workflowCard.classList.toggle("card-locked", lock);
+        lockHint.style.display = lock ? "block" : "none";
+      }
+
+      function setWorkflowLock(locked) {
+        state.workflowLocked = Boolean(locked);
+        syncWorkflowControls();
+      }
+
+      function appendEvent(event) {
+        const list = document.getElementById("events-list");
+        const item = document.createElement("li");
+        item.className = "event";
+
+        const type = String(event?.type || "status");
+        const message = String(event?.message || "");
+        const ts = event?.timestamp ? new Date(event.timestamp) : new Date();
+        const command = event?.command ? ` ${event.command} ${(event.args || []).join(" ")}` : "";
+        const code = Number.isInteger(event?.exitCode) ? ` [exit=${event.exitCode}]` : "";
+
+        item.innerHTML = `<span class="event-type">${type}</span>${message}${command}${code}<time>${ts.toLocaleTimeString()}</time>`;
+        list.prepend(item);
+        while (list.children.length > 160) {
+          list.removeChild(list.lastChild);
+        }
+      }
+
+      function applyEvent(event) {
+        if (!event) {
+          return;
+        }
+        const seq = Number(event.seq || 0);
+        if (seq > 0) {
+          if (seq <= state.lastSeq) {
+            return;
+          }
+          state.lastSeq = seq;
+        }
+
+        if (event.type === "status") {
+          setJobStatus(event.status || state.jobStatus, event.message || "");
+        }
+        if (event.type === "result" && event.textPath) {
+          setLatestTranscript(event.textPath);
+          setMessage("Transcription completed successfully.", "info");
+        }
+        if (event.type === "error") {
+          setMessage(event.message || "Transcription failed.", "error");
+        }
+
+        appendEvent(event);
+      }
+
+      function renderDiagnostics(report) {
+        const diagnostics = report || fallbackReport;
+        state.lastDiagnostics = diagnostics;
+
+        const body = document.getElementById("diagnostics-body");
+        const summary = document.getElementById("diag-summary");
+        body.innerHTML = "";
+
+        const hasFailures = Boolean(diagnostics?.hasFailures);
+        const generatedAt = diagnostics?.generatedAt ? new Date(diagnostics.generatedAt).toLocaleString() : "unknown";
+        summary.textContent = hasFailures
+          ? `Some startup checks failed. Last checked: ${generatedAt}.`
+          : `All startup checks passed. Last checked: ${generatedAt}.`;
+        setWorkflowLock(hasFailures);
+
+        for (const item of diagnostics?.items || []) {
+          const tr = document.createElement("tr");
+          const status = String(item?.status || "fail");
+
+          const nameTd = document.createElement("td");
+          nameTd.textContent = item?.name || "Unnamed check";
+
+          const statusTd = document.createElement("td");
+          const badge = document.createElement("span");
+          badge.className = `badge badge-${status}`;
+          badge.textContent = status.toUpperCase();
+          statusTd.appendChild(badge);
+
+          const detailsTd = document.createElement("td");
+          const messageDiv = document.createElement("div");
+          messageDiv.textContent = item?.message || "";
+          detailsTd.appendChild(messageDiv);
+          const hintDiv = document.createElement("div");
+          hintDiv.className = "hint";
+          hintDiv.textContent = item?.hint || "";
+          detailsTd.appendChild(hintDiv);
+
+          const actionTd = document.createElement("td");
+          const itemId = String(item?.id || "");
+          const canFix = status === "fail" && state.binding && typeof state.binding.InstallOrFixDiagnostic === "function";
+          if (canFix) {
+            const btn = document.createElement("button");
+            const isFixing = state.fixingDiagnostics.has(itemId);
+            btn.type = "button";
+            btn.className = "diag-action-btn";
+            btn.textContent = isFixing ? "Fixing..." : "Install/Fix";
+            btn.disabled = isFixing;
+            btn.addEventListener("click", () => onInstallFix(item));
+            actionTd.appendChild(btn);
+          } else {
+            actionTd.textContent = "-";
+          }
+
+          tr.appendChild(nameTd);
+          tr.appendChild(statusTd);
+          tr.appendChild(detailsTd);
+          tr.appendChild(actionTd);
+          body.appendChild(tr);
+        }
+      }
+
+      async function onInstallFix(item) {
+        const itemId = normalizePath(item?.id);
+        if (!itemId) {
+          setMessage("Diagnostic item id is missing.", "error");
+          return;
+        }
+        if (!state.binding || typeof state.binding.InstallOrFixDiagnostic !== "function") {
+          setMessage("Backend Install/Fix method is unavailable.", "error");
+          return;
+        }
+        if (state.fixingDiagnostics.has(itemId)) {
+          return;
+        }
+
+        state.fixingDiagnostics.add(itemId);
+        renderDiagnostics(state.lastDiagnostics || fallbackReport);
+        setMessage(`Running Install/Fix for ${item?.name || itemId}...`, "info");
+
+        try {
+          const report = await callBinding("InstallOrFixDiagnostic", itemId);
+          renderDiagnostics(report);
+          setMessage(`Install/Fix completed for ${item?.name || itemId}.`, "info");
+        } catch (err) {
+          setMessage(`Install/Fix failed for ${item?.name || itemId}: ${toErrorMessage(err)}`, "error");
+          try {
+            const report = await callBinding("RefreshDiagnostics");
+            renderDiagnostics(report);
+          } catch (refreshErr) {
+            console.error(refreshErr);
+          }
+        } finally {
+          state.fixingDiagnostics.delete(itemId);
+          renderDiagnostics(state.lastDiagnostics || fallbackReport);
+        }
+      }
+
+      async function callBinding(method, ...args) {
+        if (!state.binding || typeof state.binding[method] !== "function") {
+          throw new Error(`Backend method not available: ${method}`);
+        }
+        return state.binding[method](...args);
+      }
+
+      async function loadSettings() {
+        try {
+          const settings = await callBinding("GetSettings");
+          document.getElementById("model-path").value = settings.modelPath || "";
+          document.getElementById("output-dir").value = settings.outputDir || "";
+          const language = settings.language || "auto";
+          const langSelect = document.getElementById("language");
+          if ([...langSelect.options].some((option) => option.value === language)) {
+            langSelect.value = language;
+          } else {
+            const custom = document.createElement("option");
+            custom.value = language;
+            custom.textContent = language;
+            langSelect.appendChild(custom);
+            langSelect.value = language;
+          }
+        } catch (err) {
+          setMessage(`Failed to load settings: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      function setModelDownloadBusy(isBusy) {
+        state.downloadingModel = Boolean(isBusy);
+        syncModelCatalogControls();
+      }
+
+      function getSelectedModelOption() {
+        const select = document.getElementById("model-catalog");
+        const modelID = normalizePath(select?.value);
+        if (!modelID) {
+          return null;
+        }
+        return state.modelCatalog.find((model) => String(model?.id || "") === modelID) || null;
+      }
+
+      function syncModelCatalogControls() {
+        const select = document.getElementById("model-catalog");
+        const button = document.getElementById("download-model-btn");
+        const hint = document.getElementById("model-catalog-hint");
+        if (!select || !button || !hint) {
+          return;
+        }
+
+        const hasCatalog = state.modelCatalog.length > 0;
+        const selectedModel = getSelectedModelOption();
+        const isDownloaded = Boolean(selectedModel?.downloaded);
+
+        select.disabled = state.downloadingModel || !hasCatalog;
+        button.textContent = state.downloadingModel ? "Downloading..." : "Download Model";
+        button.disabled = state.downloadingModel || !hasCatalog || isDownloaded;
+        button.style.display = isDownloaded && !state.downloadingModel ? "none" : "";
+
+        if (isDownloaded) {
+          const localPath = normalizePath(selectedModel?.localPath);
+          hint.textContent = localPath ? `Model already downloaded: ${localPath}` : "Model already downloaded.";
+        } else {
+          hint.textContent = "Select a model and download it automatically.";
+        }
+      }
+
+      async function loadModelCatalog(preferredModelID = "") {
+        const select = document.getElementById("model-catalog");
+        const previousModelID = normalizePath(preferredModelID || select?.value);
+        select.innerHTML = "";
+        state.modelCatalog = [];
+
+        if (!state.binding || typeof state.binding.GetWhisperModels !== "function") {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = "Model catalog unavailable";
+          select.appendChild(option);
+          setModelDownloadBusy(false);
+          return;
+        }
+
+        try {
+          const models = await callBinding("GetWhisperModels");
+          if (!Array.isArray(models) || models.length === 0) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No models available";
+            select.appendChild(option);
+            setModelDownloadBusy(false);
+            return;
+          }
+
+          state.modelCatalog = models;
+          for (const model of models) {
+            const option = document.createElement("option");
+            option.value = String(model?.id || "");
+            option.textContent = modelOptionLabel(model);
+            select.appendChild(option);
+          }
+
+          if (previousModelID && state.modelCatalog.some((model) => String(model?.id || "") === previousModelID)) {
+            select.value = previousModelID;
+          }
+
+          setModelDownloadBusy(false);
+        } catch (err) {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = "Failed to load model catalog";
+          select.appendChild(option);
+          setModelDownloadBusy(false);
+          setMessage(`Failed to load model catalog: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onDownloadModel() {
+        if (!state.binding || typeof state.binding.DownloadWhisperModel !== "function") {
+          setMessage("Backend model download method is unavailable.", "error");
+          return;
+        }
+
+        const select = document.getElementById("model-catalog");
+        const modelID = normalizePath(select?.value);
+        if (!modelID) {
+          setMessage("Choose a model from the catalog first.", "error");
+          return;
+        }
+        const selectedModel = getSelectedModelOption();
+        if (selectedModel?.downloaded) {
+          setMessage("Selected model is already downloaded.", "info");
+          syncModelCatalogControls();
+          return;
+        }
+
+        setModelDownloadBusy(true);
+        try {
+          const settings = await callBinding("DownloadWhisperModel", modelID);
+          document.getElementById("model-path").value = settings.modelPath || "";
+          document.getElementById("output-dir").value = settings.outputDir || "";
+          document.getElementById("language").value = settings.language || "auto";
+          await loadModelCatalog(modelID);
+          await refreshDiagnostics();
+          setMessage(`Model downloaded: ${settings.modelPath || modelID}`, "info");
+        } catch (err) {
+          setMessage(`Failed to download model: ${toErrorMessage(err)}`, "error");
+        } finally {
+          setModelDownloadBusy(false);
+        }
+      }
+
+      async function saveSettings() {
+        const payload = {
+          modelPath: normalizePath(document.getElementById("model-path").value),
+          outputDir: normalizePath(document.getElementById("output-dir").value),
+          language: normalizePath(document.getElementById("language").value) || "auto"
+        };
+
+        const settings = await callBinding("SaveSettings", payload);
+        document.getElementById("model-path").value = settings.modelPath || "";
+        document.getElementById("output-dir").value = settings.outputDir || "";
+        document.getElementById("language").value = settings.language || "auto";
+      }
+
+      async function loadDiagnostics() {
+        try {
+          const report = await callBinding("GetDiagnostics");
+          renderDiagnostics(report);
+        } catch (err) {
+          console.error(err);
+          renderDiagnostics(fallbackReport);
+        }
+      }
+
+      async function refreshDiagnostics() {
+        try {
+          const report = await callBinding("RefreshDiagnostics");
+          renderDiagnostics(report);
+          setMessage("Diagnostics refreshed.", "info");
+        } catch (err) {
+          setMessage(`Failed to refresh diagnostics: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function syncCurrentJob() {
+        try {
+          const job = await callBinding("CurrentJob");
+          setJobStatus(job?.status || "idle", job?.id ? `Current job: ${job.id}` : "No active job.");
+        } catch (err) {
+          setJobStatus("idle", "No active job.");
+        }
+      }
+
+      async function fetchMissedEvents() {
+        try {
+          const events = await callBinding("JobEvents", state.lastSeq);
+          for (const event of events || []) {
+            applyEvent(event);
+          }
+        } catch (err) {
+          console.error("event fetch failed", err);
+        }
+      }
+
+      function subscribeEvents() {
+        const listener = window.runtime && typeof window.runtime.EventsOn === "function";
+        if (listener) {
+          window.runtime.EventsOn("job:event", (event) => {
+            applyEvent(event || { type: "status", message: "Empty event payload." });
+          });
+          appendEvent({ type: "status", message: "Subscribed to live job:event stream.", timestamp: new Date().toISOString() });
+        } else {
+          appendEvent({
+            type: "status",
+            message: "Runtime EventsOn unavailable. Falling back to polling JobEvents.",
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        if (state.fallbackPollHandle) {
+          clearInterval(state.fallbackPollHandle);
+        }
+        state.fallbackPollHandle = setInterval(fetchMissedEvents, 1500);
+      }
+
+      async function onPickInput() {
+        try {
+          const path = await callBinding("PickInputFile");
+          if (path) {
+            document.getElementById("input-path").value = path;
+          }
+        } catch (err) {
+          setMessage(`Unable to pick input file: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onPickModelFile() {
+        try {
+          const path = await callBinding("PickModelFile");
+          if (path) {
+            document.getElementById("model-path").value = path;
+          }
+        } catch (err) {
+          setMessage(`Unable to pick model file: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onPickModelDir() {
+        try {
+          const path = await callBinding("PickModelDirectory");
+          if (path) {
+            document.getElementById("model-path").value = path;
+          }
+        } catch (err) {
+          setMessage(`Unable to pick model directory: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onPickOutputDir() {
+        try {
+          const path = await callBinding("PickOutputDirectory");
+          if (path) {
+            document.getElementById("output-dir").value = path;
+          }
+        } catch (err) {
+          setMessage(`Unable to pick output directory: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onSaveSettings() {
+        try {
+          await saveSettings();
+          await refreshDiagnostics();
+          setMessage("Settings saved.", "info");
+        } catch (err) {
+          setMessage(`Failed to save settings: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onStart() {
+        if (state.workflowLocked) {
+          setMessage("Workflow is locked until all startup diagnostics pass.", "error");
+          return;
+        }
+
+        const inputPath = normalizePath(document.getElementById("input-path").value);
+        if (!inputPath) {
+          setMessage("Select an input media file before starting.", "error");
+          return;
+        }
+
+        try {
+          await saveSettings();
+          setMessage("");
+          const job = await callBinding("StartTranscription", inputPath);
+          setJobStatus(job?.status || "preprocessing", `Started job ${job?.id || ""}`.trim());
+          appendEvent({ type: "status", message: `Job started for ${inputPath}`, timestamp: new Date().toISOString() });
+        } catch (err) {
+          setMessage(`Failed to start transcription: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onCancel() {
+        try {
+          await callBinding("CancelTranscription");
+          setJobStatus("cancelled", "Cancellation requested.");
+          setMessage("Cancellation requested.", "info");
+        } catch (err) {
+          setMessage(`Failed to cancel transcription: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      async function onOpenOutput() {
+        try {
+          const target = state.latestTranscriptPath || normalizePath(document.getElementById("output-dir").value);
+          await callBinding("OpenOutputFolder", target);
+        } catch (err) {
+          setMessage(`Unable to open output folder: ${toErrorMessage(err)}`, "error");
+        }
+      }
+
+      function wireDropzone() {
+        const dropzone = document.getElementById("dropzone");
+
+        const activate = () => dropzone.classList.add("dropzone-active");
+        const deactivate = () => dropzone.classList.remove("dropzone-active");
+
+        ["dragenter", "dragover"].forEach((name) => {
+          dropzone.addEventListener(name, (event) => {
+            event.preventDefault();
+            if (state.workflowLocked) {
+              return;
+            }
+            activate();
+          });
+        });
+
+        ["dragleave", "drop"].forEach((name) => {
+          dropzone.addEventListener(name, (event) => {
+            event.preventDefault();
+            deactivate();
+          });
+        });
+
+        dropzone.addEventListener("drop", (event) => {
+          if (state.workflowLocked) {
+            setMessage("Workflow is locked until all startup diagnostics pass.", "error");
+            return;
+          }
+          const file = event.dataTransfer?.files?.[0];
+          const droppedPath = normalizePath(file?.path || "");
+          if (!droppedPath) {
+            setMessage("Dropped item does not include a local file path. Use Browse instead.", "error");
+            return;
+          }
+          if (!isLikelyMediaPath(droppedPath)) {
+            setMessage("Dropped file extension is unusual for media, but you can still try starting the job.", "info");
+          }
+          document.getElementById("input-path").value = droppedPath;
+        });
+      }
+
+      function wireActions() {
+        document.getElementById("pick-input-btn").addEventListener("click", onPickInput);
+        document.getElementById("pick-model-file-btn").addEventListener("click", onPickModelFile);
+        document.getElementById("pick-model-dir-btn").addEventListener("click", onPickModelDir);
+        document.getElementById("model-catalog").addEventListener("change", syncModelCatalogControls);
+        document.getElementById("download-model-btn").addEventListener("click", onDownloadModel);
+        document.getElementById("pick-output-btn").addEventListener("click", onPickOutputDir);
+        document.getElementById("save-settings-btn").addEventListener("click", onSaveSettings);
+        document.getElementById("refresh-diagnostics-btn").addEventListener("click", refreshDiagnostics);
+        document.getElementById("start-btn").addEventListener("click", onStart);
+        document.getElementById("cancel-btn").addEventListener("click", onCancel);
+        document.getElementById("open-output-btn").addEventListener("click", onOpenOutput);
+      }
+
+      async function bootstrap() {
+        state.binding = getAppBinding();
+        if (!state.binding) {
+          renderDiagnostics(fallbackReport);
+          setMessage("Backend bindings are unavailable. Run the app via Wails.", "error");
+          return;
+        }
+
+        wireActions();
+        wireDropzone();
+        setJobStatus("idle", "No active job.");
+        setLatestTranscript("");
+
+        await loadSettings();
+        await loadModelCatalog();
+        await loadDiagnostics();
+        await syncCurrentJob();
+        await fetchMissedEvents();
+        subscribeEvents();
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>

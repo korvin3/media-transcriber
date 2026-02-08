@@ -1,0 +1,10 @@
+{
+  "name": "media-transcriber-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"frontend dev server placeholder\"",
+    "build": "echo \"frontend build placeholder\""
+  }
+}
